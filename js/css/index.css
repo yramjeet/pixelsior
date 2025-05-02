@@ -1,0 +1,63 @@
+body {
+	background-color: black;
+}
+
+#edcon{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	justify-content: space-between;
+}
+
+#cancon{
+	width: 100%;
+	height: 100%;
+	margin: 1rem 0 1rem 0;
+	position: relative;
+}
+
+#map-layer{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: space-around;
+	position: absolute;
+	z-index: 1;
+}
+
+
+#tile-map{
+	height: 100%;
+	background-color: lightgray;
+	outline: none;
+}
+
+#grd-layer{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: space-around;
+	position: absolute;
+	z-index: 2;
+}
+
+#grd{
+	height: 100%;
+	background: transparent;
+	z-index: 2;
+}
+
+#cmdbar{
+	width: 100%;
+}
+
+#cmd{
+	width: 100%;
+	height: 3rem;
+	font-size: 2rem;
+	color: lightgreen;
+	background: #232323;
+	border: none;
+}
