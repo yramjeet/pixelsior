@@ -104,6 +104,21 @@ function set_vec4_uniform(gl, program, name, value){
 	gl.uniform4f(loc, ...value);
 }
 
+if (!Uint8Array.fromHex) {
+	Uint8Array.fromHex = function(hex){
+		const arr = new Uint8Array(4);
+		let i = 0;
+		let j = 0;
+		while(i < hex.length){
+			arr[j] = parseInt(hex.substring(i, i+2), 16);
+			j = j + 1;
+			i = i + 2;
+		}
+		return arr;
+	}
+}
+
+
 function hex_to_vec4(hex_str){
 	return (new Float32Array(Uint8Array.fromHex(
 		hex_str.split("#").pop()
