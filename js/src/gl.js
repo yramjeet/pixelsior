@@ -293,6 +293,25 @@ Editor.prototype.handle_erase = function(){
 
 }
 
+Editor.prototype.handle_cmd = function(cmd_str) {
+	const cmd_args = cmd_str.split(" ");
+	switch(cmd_args[0]){
+		case 'save' : {
+			const a = document.createElement("a");
+			this.image_layer.draw_pixels(this.rows * this.cols);
+			const data = this.image_layer.canvas.toDataURL("image/png", 0.5);
+			a.href = data;
+			a.download = cmd_args[1] + ".png";
+			a.click();
+			break;
+		}
+		case 'set-color' : {
+			this.color = cmd_args[1];
+			break;
+		}
+	}
+}
+
 Editor.prototype.add_layer = function(anchor){
 	if (anchor) {
 
@@ -342,12 +361,26 @@ Editor.prototype.init_listeners = function(){
 				this.cmd_bar.focus();
 				break;
 			}
+			case 'f' : {
+				this.handle_fill();
+				break;
+			}
+			case 'x' : {
+				this.handle_erase();
+				break;
+			}
 		}
 	});
 	
 	this.cmd_bar.addEventListener('keyup', (e) => {
 		switch(e.key){
 			case 'Escape' : {
+				this.cmd_bar.value = '';
+				this.layer_root.focus();
+				break;
+			}
+			case 'Enter' : {
+				this.handle_cmd(this.cmd_bar.value.substring(1));
 				this.cmd_bar.value = '';
 				this.layer_root.focus();
 				break;
