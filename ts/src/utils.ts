@@ -52,6 +52,30 @@ export function setVec4Uniform(gl: WebGL2RenderingContext, program: WebGLProgram
 	gl.uniform4f(loc, value[0], value[1], value[2], value[3]);
 }
 
+export function setColorAttrib(gl: WebGL2RenderingContext, loc: number, size: number, normalise: boolean, stride:number, offset: number){
+	gl.vertexAttribPointer(
+		loc,
+		size,
+		gl.UNSIGNED_BYTE,
+		normalise,
+		stride,
+		offset
+	);
+	gl.enableVertexAttribArray(loc);
+}
+
+export function setCoordAttrib(gl: WebGL2RenderingContext, loc: number, size: number, normalise: boolean, stride:number, offset: number){
+	gl.vertexAttribPointer(
+		loc,
+		size,
+		gl.UNSIGNED_SHORT,
+		normalise,
+		stride,
+		offset
+	);
+	gl.enableVertexAttribArray(loc);
+}
+
 export function hexToUint8(hex_str: string): Uint8Array {
 	const hex = hex_str.split("#").pop();
 	if(!hex){
@@ -79,4 +103,22 @@ export function hexToVec4(hex_str: string) :Float32Array {
 
 export function unit8ToVec4(arr: Uint8Array | Uint8ClampedArray): Float32Array {
 	return (new Float32Array(arr)).map(v => v/255);
+}
+
+export function resizeImage(image_data: ImageData, new_width: number, new_height: number): ImageData{
+	const new_image = new ImageData(new_width, new_height);
+
+	let i = 0, j = 0;
+	while(i < image_data.data.length && j < new_image.data.length){
+		new_image.data[j] = image_data.data[i];
+		i = i + 1;
+		j = j + 1;
+		if(image_data.width <= new_width && (i % (image_data.width * 4) == 0)){
+			j = new_image.width * (i / image_data.width);
+		} else if(new_width < image_data.width && (j % (new_width * 4) == 0)){
+			i = image_data.width * (j / new_width);
+		}
+	}
+
+	return new_image;
 }

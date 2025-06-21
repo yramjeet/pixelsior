@@ -1,8 +1,19 @@
 import { createProgram, hexToVec4, unit8ToVec4 } from "./utils.js";
 
+type TypedArray = Uint8Array | Uint8ClampedArray | Uint16Array | Float32Array;
+
 interface UniformMetadata {
 	name: string;
-	value: number | Float32Array;
+	value: number | TypedArray; 
+	setter: Function;
+}
+
+interface AttributeMetadata {
+	loc: number;
+	size: 1 | 2 | 3 | 4;
+	stride: number;
+	offset: number,
+	normalise: boolean;
 	setter: Function;
 }
 
@@ -11,7 +22,7 @@ export class Layer {
 	ctx!: WebGL2RenderingContext;
 	program!: WebGLProgram;
 	image_data!: ImageData;
-	pixel_buffer!: Float32Array;
+	pixel_buffer!: TypedArray;
 	vertex_buffer!: WebGLBuffer;
 	draw_state!: WebGLVertexArrayObject;
 
@@ -19,6 +30,12 @@ export class Layer {
 		this.canvas = document.createElement("canvas");
 		this.canvas.width = width;
 		this.canvas.height = height;
+	}
+
+	resizeCanvas(width: number, height: number){
+		this.canvas.width = width;
+		this.canvas.height = height;
+		this.ctx.viewport(0, 0, width, height);
 	}
 
 	acquireContext(alpha: boolean = false) : WebGL2RenderingContext {
@@ -39,10 +56,10 @@ export class Layer {
 
 	initImageData(image_data: ImageData){
 		this.image_data = image_data;
-		this.pixel_buffer = unit8ToVec4(image_data.data);
+		this.pixel_buffer = image_data.data;
 	}
 
-	setPixelBuffer(vertex_data: Float32Array){
+	setPixelBuffer(vertex_data: TypedArray){
 		this.pixel_buffer = vertex_data;
 	}
 
@@ -60,10 +77,25 @@ export class Layer {
 		this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
 		this.ctx.bufferData(this.ctx.ARRAY_BUFFER, this.pixel_buffer, this.ctx.DYNAMIC_DRAW);
 	}
-
-	updateBuffer(vertex_data: Float32Array, offset = 0){
+	
+	resetBuffer(){
 		this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
-		this.ctx.bufferSubData(this.ctx.ARRAY_BUFFER, offset * Float32Array.BYTES_PER_ELEMENT, vertex_data);
+		this.ctx.bufferData(this.ctx.ARRAY_BUFFER, this.pixel_buffer, this.ctx.DYNAMIC_DRAW);
+	}
+
+	updateImageData(arr: Uint8Array, offset: number){
+		arr.forEach((v,i) => {
+			this.image_data.data[offset+i] = v
+		});
+	}
+
+	updateBuffer(vertex_data: TypedArray, offset = 0){
+		this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
+		this.ctx.bufferSubData(this.ctx.ARRAY_BUFFER, offset * vertex_data.BYTES_PER_ELEMENT, vertex_data);
+	}
+
+	setAttribs(attribs: Array<AttributeMetadata>){
+		attribs.forEach(a => a.setter(this.ctx, a.loc, a.size, a.normalise, a.stride, a.offset));
 	}
 
 	setAttrib(a_loc: number, a_size: number, stride: number, offset: number){

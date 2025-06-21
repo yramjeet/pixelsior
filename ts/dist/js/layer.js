@@ -1,4 +1,4 @@
-import { createProgram, hexToVec4, unit8ToVec4 } from "./utils.js";
+import { createProgram, hexToVec4 } from "./utils.js";
 export class Layer {
     canvas;
     ctx;
@@ -11,6 +11,11 @@ export class Layer {
         this.canvas = document.createElement("canvas");
         this.canvas.width = width;
         this.canvas.height = height;
+    }
+    resizeCanvas(width, height) {
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx.viewport(0, 0, width, height);
     }
     acquireContext(alpha = false) {
         const ctx = this.canvas.getContext("webgl2", { alpha: alpha });
@@ -26,7 +31,7 @@ export class Layer {
     }
     initImageData(image_data) {
         this.image_data = image_data;
-        this.pixel_buffer = unit8ToVec4(image_data.data);
+        this.pixel_buffer = image_data.data;
     }
     setPixelBuffer(vertex_data) {
         this.pixel_buffer = vertex_data;
@@ -43,9 +48,21 @@ export class Layer {
         this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
         this.ctx.bufferData(this.ctx.ARRAY_BUFFER, this.pixel_buffer, this.ctx.DYNAMIC_DRAW);
     }
+    resetBuffer() {
+        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
+        this.ctx.bufferData(this.ctx.ARRAY_BUFFER, this.pixel_buffer, this.ctx.DYNAMIC_DRAW);
+    }
+    updateImageData(arr, offset) {
+        arr.forEach((v, i) => {
+            this.image_data.data[offset + i] = v;
+        });
+    }
     updateBuffer(vertex_data, offset = 0) {
         this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertex_buffer);
-        this.ctx.bufferSubData(this.ctx.ARRAY_BUFFER, offset * Float32Array.BYTES_PER_ELEMENT, vertex_data);
+        this.ctx.bufferSubData(this.ctx.ARRAY_BUFFER, offset * vertex_data.BYTES_PER_ELEMENT, vertex_data);
+    }
+    setAttribs(attribs) {
+        attribs.forEach(a => a.setter(this.ctx, a.loc, a.size, a.normalise, a.stride, a.offset));
     }
     setAttrib(a_loc, a_size, stride, offset) {
         this.ctx.vertexAttribPointer(a_loc, a_size, this.ctx.FLOAT, false, stride, offset);

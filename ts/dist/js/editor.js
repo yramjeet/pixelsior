@@ -1,6 +1,6 @@
 import { Layer } from "./layer.js";
 import { GRID_VERTEX_SHADER, COLOR_VERTEX_SHADER, COORD_VERTEX_SHADER, COLOR_FRAGMENT_SHADER, UNIFORM_FRAGMENT_SHADER } from "./shaders.js";
-import { setFloatUniform, setVec2Uniform, setVec4Uniform, hexToVec4 } from "./utils.js";
+import { setFloatUniform, setVec2Uniform, setVec4Uniform, setColorAttrib, setCoordAttrib, hexToVec4, hexToUint8, resizeImage } from "./utils.js";
 export class Editor {
     res = {
         width: 30,
@@ -42,7 +42,7 @@ export class Editor {
             },
             {
                 "name": "u_res",
-                "value": new Float32Array([this.res.width, this.res.height]),
+                "value": new Uint16Array([this.res.width, this.res.height]),
                 "setter": setVec2Uniform
             }
         ]);
@@ -62,14 +62,23 @@ export class Editor {
             },
             {
                 "name": "u_res",
-                "value": new Float32Array([this.res.width, this.res.height]),
+                "value": new Uint16Array([this.res.width, this.res.height]),
                 "setter": setVec2Uniform
             }
         ]);
         this.image_layer.initImageData(new ImageData(this.res.width, this.res.height));
         this.image_layer.initDrawState();
         this.image_layer.initVertexBuffer();
-        this.image_layer.setAttrib(0, 4, 0, 0);
+        this.image_layer.setAttribs([
+            {
+                "loc": 0,
+                "size": 4,
+                "normalise": true,
+                "stride": 0,
+                "offset": 0,
+                "setter": setColorAttrib
+            }
+        ]);
         this.image_layer.drawPixels(this.res.width * this.res.height);
     }
     initCursorLayer() {
@@ -84,7 +93,7 @@ export class Editor {
             },
             {
                 "name": "u_res",
-                "value": new Float32Array([this.res.width, this.res.height]),
+                "value": new Uint16Array([this.res.width, this.res.height]),
                 "setter": setVec2Uniform
             },
             {
@@ -93,20 +102,65 @@ export class Editor {
                 "setter": setVec4Uniform
             }
         ]);
-        this.cursor_layer.setPixelBuffer(new Float32Array([this.coord.x, this.coord.y]));
+        this.cursor_layer.setPixelBuffer(new Uint16Array([this.coord.x, this.coord.y]));
         this.cursor_layer.initDrawState();
         this.cursor_layer.initVertexBuffer();
-        this.cursor_layer.setAttrib(0, 2, 0, 0);
+        this.cursor_layer.setAttribs([
+            {
+                "loc": 0,
+                "size": 2,
+                "normalise": false,
+                "stride": 0,
+                "offset": 0,
+                "setter": setCoordAttrib
+            }
+        ]);
         this.cursor_layer.drawPixels(1);
     }
     setPixelColor(hex_color) {
         const offset = (this.coord.y * this.res.width + this.coord.x) * 4;
-        this.image_layer.updateBuffer(hexToVec4(hex_color), offset);
+        const arr = hexToUint8(hex_color);
+        this.image_layer.updateImageData(arr, offset);
+        this.image_layer.updateBuffer(arr, offset);
         this.image_layer.drawPixels(this.res.width * this.res.height);
     }
     drawCursor() {
-        this.cursor_layer.updateBuffer(new Float32Array([this.coord.x, this.coord.y]));
+        this.cursor_layer.updateBuffer(new Uint16Array([this.coord.x, this.coord.y]));
         this.cursor_layer.drawPixels(1);
+    }
+    handleResize() {
+        this.grid_layer.resizeCanvas(this.res.width * this.pixel_size, this.res.height * this.pixel_size);
+        this.grid_layer.setUniforms([
+            {
+                "name": "u_res",
+                "value": new Uint16Array([this.res.width, this.res.height]),
+                "setter": setVec2Uniform
+            }
+        ]);
+        this.grid_layer.clear();
+        this.grid_layer.drawPixels(this.res.width * this.res.height);
+        this.image_layer.resizeCanvas(this.res.width * this.pixel_size, this.res.height * this.pixel_size);
+        this.image_layer.setUniforms([
+            {
+                "name": "u_res",
+                "value": new Uint16Array([this.res.width, this.res.height]),
+                "setter": setVec2Uniform
+            }
+        ]);
+        this.image_layer.initImageData(resizeImage(this.image_layer.image_data, this.res.width, this.res.height));
+        this.image_layer.resetBuffer();
+        this.image_layer.clear();
+        this.image_layer.drawPixels(this.res.width * this.res.height);
+        this.cursor_layer.resizeCanvas(this.res.width * this.pixel_size, this.res.height * this.pixel_size);
+        this.cursor_layer.setUniforms([
+            {
+                "name": "u_res",
+                "value": new Uint16Array([this.res.width, this.res.height]),
+                "setter": setVec2Uniform
+            }
+        ]);
+        this.cursor_layer.clear();
+        this.drawCursor();
     }
     handleCmd(cmd_str) {
         const cmd_args = cmd_str.split(" ");
@@ -123,6 +177,16 @@ export class Editor {
             case 'set-color': {
                 this.color = cmd_args[1];
                 break;
+            }
+            case 'set-res': {
+                const width = parseInt(cmd_args[1], 10);
+                const height = parseInt(cmd_args[2], 10);
+                this.res = { width, height };
+                this.coord = {
+                    x: Math.floor(this.res.width / 2),
+                    y: Math.floor(this.res.height / 2)
+                };
+                this.handleResize();
             }
         }
     }
