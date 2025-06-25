@@ -21,7 +21,7 @@ export const GRID_VERTEX_SHADER = `#version 300 es
 		float ry = (ch - float(y) * u_ps * 2.0)/ch - (u_ps/ch);
 		gl_Position = vec4(rx, ry, 0.0, 1.0);
 		gl_PointSize = u_ps;
-		v_color = ((gl_VertexID + y)%2 == 0) ? vec4(0.6, 0.6, 0.6, 1.0) : vec4(0.4, 0.4, 0.4, 1.0);
+		v_color = ((gl_VertexID + y)%2 == 0) ? vec4(0.6, 0.6, 0.6, 0.3) : vec4(0.4, 0.4, 0.4, 0.3);
 	}`;
 
 export const COLOR_VERTEX_SHADER = `#version 300 es
@@ -56,7 +56,7 @@ export const COORD_VERTEX_SHADER = `#version 300 es
 		float rx = (a_pos.x * u_ps * 2.0 - cw)/cw + (u_ps/cw);
 		float ry = (ch - a_pos.y * u_ps * 2.0)/ch - (u_ps/ch);
 		gl_Position = vec4(rx, ry, 0.0, 1.0);
-		gl_PointSize = u_ps;
+		gl_PointSize = u_ps * 0.75;
 	}`;
 
 export const COORD_COLOR_VERTEX_SHADER = `#version 300 es

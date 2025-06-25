@@ -122,3 +122,15 @@ export function resizeImage(image_data: ImageData, new_width: number, new_height
 
 	return new_image;
 }
+
+export function throttle<T extends(...args: any[]) => void>(fn: T, ms_delay: number): T {
+	let last_trigger = 0;
+
+	return function(this: any, ...args : Parameters<T>) {
+		const now = Date.now();
+		if( now - last_trigger >= ms_delay){
+			last_trigger = now;
+			fn.apply(this, args);
+		}
+	} as T;
+}

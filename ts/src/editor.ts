@@ -1,4 +1,5 @@
 import { Layer } from "./layer.js";
+import { Status } from "./status.js";
 import {
 	GRID_VERTEX_SHADER,
 	COLOR_VERTEX_SHADER,
@@ -14,7 +15,8 @@ import {
 	setCoordAttrib,
 	hexToVec4,
 	hexToUint8,
-	resizeImage
+	resizeImage,
+	throttle
 } from "./utils.js";
 
 interface Res {
@@ -26,7 +28,6 @@ interface Coord2d {
 	x: number;
 	y: number;
 }
-
 
 export class Editor { 
 	res: Res = {
@@ -51,10 +52,16 @@ export class Editor {
 
 	layer_root: HTMLDivElement;
 	cmd_bar: HTMLInputElement;
+	status_bar: HTMLDivElement;
+	status: Status;
 
-	constructor(layer_root: HTMLDivElement, cmd_bar: HTMLInputElement){
+	constructor(layer_root: HTMLDivElement, cmd_bar: HTMLInputElement, status_bar: HTMLDivElement){
 		this.layer_root = layer_root;
 		this.cmd_bar = cmd_bar;
+		this.status_bar = status_bar;
+		this.status = new Status(status_bar, this.res.width, this.res.height, this.coord.x, this.coord.y, this.color);
+		this.throttledDrawCursor = throttle(this.drawCursorAtPointer.bind(this), 100);
+		this.fillPixelAtPointer = this.fillPixelAtPointer.bind(this);
 	}
 
 	addLayer(anchor: HTMLElement | null){
@@ -136,7 +143,7 @@ export class Editor {
 			},
 			{
 				"name": "u_color",
-				"value": hexToVec4("#00777777"),
+				"value": hexToVec4("#77aabb80"),
 				"setter": setVec4Uniform
 			}
 		]);
@@ -154,7 +161,12 @@ export class Editor {
 			}
 
 		]);
+		this.cursor_layer.enableBlend();
+		this.cursor_layer.clear();
 		this.cursor_layer.drawPixels(1);
+	}
+
+	initStatusBar(){
 	}
 
 	setPixelColor(hex_color: string){
@@ -170,7 +182,14 @@ export class Editor {
 		this.cursor_layer.drawPixels(1);
 	}
 
-	handleResize(){
+	clear(){
+		this.image_layer.initImageData(new ImageData(this.res.width, this.res.height));
+		this.image_layer.resetBuffer();
+		this.image_layer.clear();
+		this.image_layer.drawPixels(this.res.width * this.res.height);
+	}
+
+	createNew(keep_data: boolean = false){
 		this.grid_layer.resizeCanvas(this.res.width * this.pixel_size, this.res.height * this.pixel_size);
 		this.grid_layer.setUniforms([
 			{
@@ -190,7 +209,13 @@ export class Editor {
 				"setter": setVec2Uniform
 			}
 		]);
-		this.image_layer.initImageData(resizeImage(this.image_layer.image_data, this.res.width, this.res.height));
+
+		if (keep_data){
+			this.image_layer.initImageData(resizeImage(this.image_layer.image_data, this.res.width, this.res.height));
+		} else {
+			this.image_layer.initImageData(new ImageData(this.res.width, this.res.height));
+		}
+
 		this.image_layer.resetBuffer();
 		this.image_layer.clear();
 		this.image_layer.drawPixels(this.res.width * this.res.height);
@@ -205,12 +230,73 @@ export class Editor {
 		]);
 		this.cursor_layer.clear();
 		this.drawCursor();
+		this.status.updateRes(this.res.width, this.res.height);
+		this.status.updateCoord(this.coord.x, this.coord.y);
 
+	}
+
+	fillPixelAtPointer(e: MouseEvent) {
+		this.coord ={
+			x: Math.floor(e.offsetX * this.res.width / this.cursor_layer.canvas.clientWidth),
+			y: Math.floor(e.offsetY * this.res.height / this.cursor_layer.canvas.clientHeight)
+		}
+		this.drawCursor();
+		this.status.updateCoord(this.coord.x, this.coord.y);
+		this.setPixelColor(this.color);
+	}
+
+	drawCursorAtPointer(e: MouseEvent) {
+		this.coord ={
+			x: Math.floor(e.offsetX * this.res.width / this.cursor_layer.canvas.clientWidth),
+			y: Math.floor(e.offsetY * this.res.height / this.cursor_layer.canvas.clientHeight)
+		}
+		this.drawCursor();
+		this.status.updateCoord(this.coord.x, this.coord.y);
+	}
+
+	throttledDrawCursor(e: MouseEvent){}
+	
+	enableMouse(){
+		this.cursor_layer.canvas.addEventListener('click', this.fillPixelAtPointer);
+		this.cursor_layer.canvas.addEventListener('mousemove', this.throttledDrawCursor);
+	}
+
+	disableMouse(){
+		this.cursor_layer.canvas.removeEventListener('click', this.fillPixelAtPointer);
+		this.cursor_layer.canvas.removeEventListener('mousemove', this.drawCursorAtPointer);
 	}
 
 	handleCmd(cmd_str: string){
 		const cmd_args = cmd_str.split(" ");
 		switch(cmd_args[0]){
+			case 'clear': {
+				this.clear();
+				break;
+			}
+			case 'disable-mouse' : {
+				this.disableMouse();
+				break;
+			}
+			case 'enable-mouse' : {
+				this.enableMouse();
+				break;
+			}
+			case 'new' : {
+				if(!cmd_args[1]){
+					this.clear();
+				} else{
+					this.res = {
+						width: parseInt(cmd_args[1], 10),
+						height: parseInt((cmd_args[2] || cmd_args[1]), 10)
+					}
+					this.coord = {
+						x: Math.floor(this.res.width/2),
+						y: Math.floor(this.res.height/2)
+					}
+					this.createNew();
+				}
+				break;
+			}
 			case 'save' : {
 				const a = document.createElement("a");
 				this.image_layer.drawPixels(this.res.width * this.res.height);
@@ -222,20 +308,36 @@ export class Editor {
 			}
 			case 'set-color' : {
 				this.color = cmd_args[1];
+				this.status.updateColor(this.color);
 				break;
 			}
 			case 'set-res' : {
-				const width = parseInt(cmd_args[1], 10);
-				const height = parseInt(cmd_args[2], 10);
-				this.res = {width, height};
+				this.res = {
+					width: parseInt(cmd_args[1], 10),
+					height: parseInt((cmd_args[2] || cmd_args[1]), 10)
+				}
 				this.coord = {
 					x: Math.floor(this.res.width/2),
 					y: Math.floor(this.res.height/2)
 				}
-				this.handleResize();
+				this.createNew(true);
+				break;
 			}	
+			case 'upload' :{
+				let input = document.createElement("input");
+				input.type = "file";
+				input.addEventListener("cancel", () => {
+					console.log("cancelled");
+				});
+				input.addEventListener("change", () => {
+					console.log(input.files)
+				});
+				input.click();
+				break;
+			}
 		}
 	}
+
 
 	addListeners(){
 		this.layer_root.addEventListener('keydown', (e) => {
@@ -246,6 +348,7 @@ export class Editor {
 					y = y == 0 ? (this.res.height - 1) : y - 1;
 					this.coord = {x, y};
 					this.drawCursor();
+					this.status.updateCoord(this.coord.x, this.coord.y);
 					break;
 				}
 				case 'j': {
@@ -253,6 +356,7 @@ export class Editor {
 					y = y == (this.res.height - 1) ? 0 : y + 1;
 					this.coord = {x, y};
 					this.drawCursor();
+					this.status.updateCoord(this.coord.x, this.coord.y);
 					break;
 				}
 				case 'h': {
@@ -260,6 +364,7 @@ export class Editor {
 					x = x == 0 ? (this.res.width - 1) : x - 1;
 					this.coord = {x, y};
 					this.drawCursor();
+					this.status.updateCoord(this.coord.x, this.coord.y);
 					break;
 				}
 				case 'l': {
@@ -267,6 +372,7 @@ export class Editor {
 					x = x == (this.res.width - 1) ? 0 : x + 1;
 					this.coord = {x, y};
 					this.drawCursor();
+					this.status.updateCoord(this.coord.x, this.coord.y);
 					break;
 				}
 			}
@@ -290,7 +396,7 @@ export class Editor {
 				}
 			}
 		});
-		
+
 		this.cmd_bar.addEventListener('keyup', (e) => {
 			switch(e.key){
 				case 'Escape' : {

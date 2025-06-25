@@ -83,3 +83,13 @@ export function resizeImage(image_data, new_width, new_height) {
     }
     return new_image;
 }
+export function throttle(fn, ms_delay) {
+    let last_trigger = 0;
+    return function (...args) {
+        const now = Date.now();
+        if (now - last_trigger >= ms_delay) {
+            last_trigger = now;
+            fn.apply(this, args);
+        }
+    };
+}
