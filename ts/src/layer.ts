@@ -1,6 +1,6 @@
-import { createProgram, hexToVec4, unit8ToVec4 } from "./utils.js";
+import { createProgram, hexToVec, unit8ToVec4 } from "./utils.js";
 
-type TypedArray = Uint8Array | Uint8ClampedArray | Uint16Array | Float32Array;
+type TypedArray = Uint8Array | Uint8ClampedArray | Int8Array | Uint16Array | Float32Array;
 
 interface UniformMetadata {
 	name: string;
@@ -30,6 +30,15 @@ export class Layer {
 		this.canvas = document.createElement("canvas");
 		this.canvas.width = width;
 		this.canvas.height = height;
+	}
+
+	getColorVecAtOffset(offset: number) : Uint8Array {
+		return new Uint8Array([
+			this.image_data.data[offset],
+			this.image_data.data[offset + 1],
+			this.image_data.data[offset + 2],
+			this.image_data.data[offset + 3]
+		]);
 	}
 
 	resizeCanvas(width: number, height: number){
@@ -111,7 +120,7 @@ export class Layer {
 	}
 
 	clear(color: string = "#00000000"){
-		const [r, g, b, a] = hexToVec4(color);
+		const [r, g, b, a] = hexToVec(color);
 		this.ctx.clearColor(r, g, b, a);
 		this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
 	}
@@ -126,6 +135,14 @@ export class Layer {
 			this.ctx.POINTS,
 			0,
 			count
+		);
+	}
+
+	drawTriangles(count: number){
+		this.ctx.drawArrays(
+			this.ctx.TRIANGLES,
+			0,
+			count * 3
 		);
 	}
 }

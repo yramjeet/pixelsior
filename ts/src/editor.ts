@@ -1,5 +1,6 @@
 import { Layer } from "./layer.js";
 import { Status } from "./status.js";
+import { ColorPicker } from "./color_picker.js";
 import {
 	GRID_VERTEX_SHADER,
 	COLOR_VERTEX_SHADER,
@@ -13,8 +14,9 @@ import {
 	setVec4Uniform,
 	setColorAttrib,
 	setCoordAttrib,
-	hexToVec4,
+	hexToVec,
 	hexToUint8,
+	uint8ToHex,
 	resizeImage,
 	throttle
 } from "./utils.js";
@@ -54,12 +56,17 @@ export class Editor {
 	cmd_bar: HTMLInputElement;
 	status_bar: HTMLDivElement;
 	status: Status;
+	picker_anchor!: HTMLButtonElement;
+	color_picker!: ColorPicker;
+
+	files: Array<File> = [];
 
 	constructor(layer_root: HTMLDivElement, cmd_bar: HTMLInputElement, status_bar: HTMLDivElement){
 		this.layer_root = layer_root;
 		this.cmd_bar = cmd_bar;
 		this.status_bar = status_bar;
-		this.status = new Status(status_bar, this.res.width, this.res.height, this.coord.x, this.coord.y, this.color);
+		this.status = new Status(status_bar, this.res.width, this.res.height, this.coord.x, this.coord.y, "#00000000", this.color);
+		this.initColorPicker();
 		this.throttledDrawCursor = throttle(this.drawCursorAtPointer.bind(this), 100);
 		this.fillPixelAtPointer = this.fillPixelAtPointer.bind(this);
 	}
@@ -69,6 +76,24 @@ export class Editor {
 		this.layer_root.insertBefore(layer.canvas, anchor);
 		// this.layers.push(layer);
 		return layer;
+	}
+
+	handleColorPicker(){
+		this.color = this.color_picker.color_hex;
+		this.picker_anchor.style.backgroundColor = this.color;
+		this.status.updateColor(this.color);
+		this.layer_root.focus();
+	}
+
+
+	initColorPicker(){
+		this.picker_anchor = document.createElement("button");
+		this.picker_anchor.style.background = this.color;
+		this.picker_anchor.style.width = "2rem";
+		this.picker_anchor.style.borderRadius = "15%";
+		this.color_picker = new ColorPicker(this.color);
+		this.color_picker.render(this.picker_anchor, this.handleColorPicker.bind(this));
+		this.status_bar.appendChild(this.picker_anchor);
 	}
 	
 	initGridLayer(){
@@ -143,7 +168,7 @@ export class Editor {
 			},
 			{
 				"name": "u_color",
-				"value": hexToVec4("#77aabb80"),
+				"value": hexToVec("#77aabb80"),
 				"setter": setVec4Uniform
 			}
 		]);
@@ -175,6 +200,7 @@ export class Editor {
 		this.image_layer.updateImageData(arr, offset);
 		this.image_layer.updateBuffer(arr, offset);
 		this.image_layer.drawPixels(this.res.width * this.res.height);
+		this.status.updateCoord(this.coord.x, this.coord.y, this.getPixelColor(this.coord.x, this.coord.y));
 	}
 	
 	drawCursor(){
@@ -231,8 +257,11 @@ export class Editor {
 		this.cursor_layer.clear();
 		this.drawCursor();
 		this.status.updateRes(this.res.width, this.res.height);
-		this.status.updateCoord(this.coord.x, this.coord.y);
-
+		this.status.updateCoord(this.coord.x, this.coord.y,
+			this.getPixelColor(
+				this.coord.x,
+				this.coord.y
+		));
 	}
 
 	fillPixelAtPointer(e: MouseEvent) {
@@ -241,7 +270,11 @@ export class Editor {
 			y: Math.floor(e.offsetY * this.res.height / this.cursor_layer.canvas.clientHeight)
 		}
 		this.drawCursor();
-		this.status.updateCoord(this.coord.x, this.coord.y);
+		this.status.updateCoord(this.coord.x, this.coord.y,
+			this.getPixelColor(
+				this.coord.x,
+				this.coord.y
+		));
 		this.setPixelColor(this.color);
 	}
 
@@ -251,7 +284,11 @@ export class Editor {
 			y: Math.floor(e.offsetY * this.res.height / this.cursor_layer.canvas.clientHeight)
 		}
 		this.drawCursor();
-		this.status.updateCoord(this.coord.x, this.coord.y);
+		this.status.updateCoord(this.coord.x, this.coord.y,
+			this.getPixelColor(
+				this.coord.x,
+				this.coord.y
+		));
 	}
 
 	throttledDrawCursor(e: MouseEvent){}
@@ -330,7 +367,9 @@ export class Editor {
 					console.log("cancelled");
 				});
 				input.addEventListener("change", () => {
-					console.log(input.files)
+					if(input.files){
+						this.files.push(...input.files);
+					}
 				});
 				input.click();
 				break;
@@ -338,6 +377,10 @@ export class Editor {
 		}
 	}
 
+	getPixelColor(x: number, y: number){
+		const offset = (y*this.res.width + x) * 4;
+		return "#" + uint8ToHex(this.image_layer.getColorVecAtOffset(offset));
+	}
 
 	addListeners(){
 		this.layer_root.addEventListener('keydown', (e) => {
@@ -348,7 +391,7 @@ export class Editor {
 					y = y == 0 ? (this.res.height - 1) : y - 1;
 					this.coord = {x, y};
 					this.drawCursor();
-					this.status.updateCoord(this.coord.x, this.coord.y);
+					this.status.updateCoord(x, y, this.getPixelColor(x, y));
 					break;
 				}
 				case 'j': {
@@ -356,7 +399,7 @@ export class Editor {
 					y = y == (this.res.height - 1) ? 0 : y + 1;
 					this.coord = {x, y};
 					this.drawCursor();
-					this.status.updateCoord(this.coord.x, this.coord.y);
+					this.status.updateCoord(x, y, this.getPixelColor(x, y));
 					break;
 				}
 				case 'h': {
@@ -364,7 +407,7 @@ export class Editor {
 					x = x == 0 ? (this.res.width - 1) : x - 1;
 					this.coord = {x, y};
 					this.drawCursor();
-					this.status.updateCoord(this.coord.x, this.coord.y);
+					this.status.updateCoord(x, y, this.getPixelColor(x, y));
 					break;
 				}
 				case 'l': {
@@ -372,7 +415,7 @@ export class Editor {
 					x = x == (this.res.width - 1) ? 0 : x + 1;
 					this.coord = {x, y};
 					this.drawCursor();
-					this.status.updateCoord(this.coord.x, this.coord.y);
+					this.status.updateCoord(x, y, this.getPixelColor(x, y));
 					break;
 				}
 			}
@@ -392,6 +435,10 @@ export class Editor {
 				}
 				case 'x' : {
 					this.setPixelColor("#00000000");
+					break;
+				}
+				case 'y' : {
+					this.color = this.getPixelColor(this.coord.x, this.coord.y);
 					break;
 				}
 			}

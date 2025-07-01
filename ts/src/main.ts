@@ -9,3 +9,4 @@ editor.initGridLayer();
 editor.initImageLayer();
 editor.initCursorLayer();
 editor.addListeners();
+

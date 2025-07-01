@@ -76,6 +76,18 @@ export function setCoordAttrib(gl: WebGL2RenderingContext, loc: number, size: nu
 	gl.enableVertexAttribArray(loc);
 }
 
+export function setClipSpaceAttrib(gl: WebGL2RenderingContext, loc: number, size: number, normalise: boolean, stride:number, offset: number){
+	gl.vertexAttribPointer(
+		loc,
+		size,
+		gl.FLOAT,
+		normalise,
+		stride,
+		offset
+	);
+	gl.enableVertexAttribArray(loc);
+}
+
 export function hexToUint8(hex_str: string): Uint8Array {
 	const hex = hex_str.split("#").pop();
 	if(!hex){
@@ -96,9 +108,15 @@ export function hexToUint8(hex_str: string): Uint8Array {
 	return arr;
 }
 
-export function hexToVec4(hex_str: string) :Float32Array {
+export function hexToVec(hex_str: string) :Float32Array {
 	return (new Float32Array(hexToUint8(hex_str)))
 		.map(v => v/255);
+}
+
+export function uint8ToHex(arr: Uint8Array) :string{
+	return arr.reduce((acc, v) => {
+		return acc + v.toString(16).padStart(2, "0");
+	}, "");
 }
 
 export function unit8ToVec4(arr: Uint8Array | Uint8ClampedArray): Float32Array {
@@ -133,4 +151,51 @@ export function throttle<T extends(...args: any[]) => void>(fn: T, ms_delay: num
 			fn.apply(this, args);
 		}
 	} as T;
+}
+
+export function rgb2hsv(r: number, g:number, b:number): [number, number, number]{
+	const c_max = Math.max(r, g, b);
+	const c_min = Math.min(r, g, b);
+
+	const d = c_max - c_min;
+
+	let s , h = c_max;
+
+	if(d==0){
+		h = 0;
+	} else if (c_max == r){
+		h = ((g - b)/d) % 6;
+	} else if (c_max == g){
+		h = ((b - r)/d) + 2;
+	} else if (c_max == b){
+		h = ((r - g)/d) + 4;
+	}
+	
+	h = h/6;
+	if (h < 0) {
+		h = h+1;
+	}
+	if (c_max == 0){
+		s = 0;
+	} else {
+		s = d/c_max;
+	}
+	return [h, s, c_max];
+}
+
+export function hsv2rgb(h: number, s:number, v:number): [number, number, number]{
+	const c = v * s;
+	const x = c * (1 - Math.abs((h*6)%2 - 1));
+	const m = v - c;
+
+	let rgb;
+
+	if (h < 1.0/6.0) rgb = [c, x, 0.0];
+	else if (h < 2.0/6.0) rgb = [x, c, 0.0];
+	else if (h < 3.0/6.0) rgb = [0.0, c, x];
+	else if (h < 4.0/6.0) rgb = [0.0, x, c];
+	else if (h < 5.0/6.0) rgb = [x, 0.0, c];
+	else rgb = [c, 0.0, x];
+
+	return rgb.map(val => (val + m) * 255) as [number, number, number];  
 }

@@ -88,3 +88,71 @@ export const UNIFORM_FRAGMENT_SHADER = `#version 300 es
 		out_color = u_color;
 	}`;
 
+export const UV_OUT_VERTEX_SHADER = `#version 300 es
+	layout(location = 0) in vec2 a_pos;
+
+	out vec2 v_uv;
+
+	void main(){
+		v_uv = a_pos * 0.5 + 0.5;
+		gl_Position = vec4(a_pos, 0.0, 1.0);
+	}`;
+
+export const HUE_FRAGMENT_SHADER = `#version 300 es
+	precision mediump float;
+	
+	in vec2 v_uv;
+	out vec4 out_color;
+
+	vec3 hsv2rgb(float h){
+		float c = 1.0;
+		float x = 1.0 - abs(mod(h * 6.0, 2.0) - 1.0);
+
+		vec3 rgb;
+
+		if (h < 1.0/6.0) rgb = vec3(c, x, 0.0);
+		else if (h < 2.0/6.0) rgb = vec3(x, c, 0.0);
+		else if (h < 3.0/6.0) rgb = vec3(0.0, c, x);
+		else if (h < 4.0/6.0) rgb = vec3(0.0, x, c);
+		else if (h < 5.0/6.0) rgb = vec3(x, 0.0, c);
+		else rgb = vec3(c, 0.0, x);
+
+		return rgb;
+	}
+
+	void main(){
+		float hue = v_uv.x;
+		vec3 rgb = hsv2rgb(hue);
+		out_color = vec4(rgb, 1.0);
+	}`;
+
+export const HSV_FRAGMENT_SHADER = `#version 300 es
+	precision mediump float;
+	
+	uniform float hue;
+	in vec2 v_uv;
+	out vec4 out_color;
+
+	vec3 hsv2rgb(float h, float s, float v){
+		float c = s * v; 
+		float x = c * (1.0 - abs(mod(h * 6.0, 2.0) - 1.0));
+		float m = v - c;
+
+		vec3 rgb;
+
+		if (h < 1.0/6.0) rgb = vec3(c, x, 0.0);
+		else if (h < 2.0/6.0) rgb = vec3(x, c, 0.0);
+		else if (h < 3.0/6.0) rgb = vec3(0.0, c, x);
+		else if (h < 4.0/6.0) rgb = vec3(0.0, x, c);
+		else if (h < 5.0/6.0) rgb = vec3(x, 0.0, c);
+		else rgb = vec3(c, 0.0, x);
+
+		return rgb + vec3(m);
+	}
+
+	void main(){
+		float s = v_uv.x;
+		float v = v_uv.y;
+		vec3 rgb = hsv2rgb(hue, s, v);
+		out_color = vec4(rgb, 1.0);
+	}`;

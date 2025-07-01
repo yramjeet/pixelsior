@@ -1,4 +1,4 @@
-import { createProgram, hexToVec4 } from "./utils.js";
+import { createProgram, hexToVec } from "./utils.js";
 export class Layer {
     canvas;
     ctx;
@@ -11,6 +11,14 @@ export class Layer {
         this.canvas = document.createElement("canvas");
         this.canvas.width = width;
         this.canvas.height = height;
+    }
+    getColorVecAtOffset(offset) {
+        return new Uint8Array([
+            this.image_data.data[offset],
+            this.image_data.data[offset + 1],
+            this.image_data.data[offset + 2],
+            this.image_data.data[offset + 3]
+        ]);
     }
     resizeCanvas(width, height) {
         this.canvas.width = width;
@@ -69,7 +77,7 @@ export class Layer {
         this.ctx.enableVertexAttribArray(a_loc);
     }
     clear(color = "#00000000") {
-        const [r, g, b, a] = hexToVec4(color);
+        const [r, g, b, a] = hexToVec(color);
         this.ctx.clearColor(r, g, b, a);
         this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
     }
@@ -79,5 +87,8 @@ export class Layer {
     }
     drawPixels(count) {
         this.ctx.drawArrays(this.ctx.POINTS, 0, count);
+    }
+    drawTriangles(count) {
+        this.ctx.drawArrays(this.ctx.TRIANGLES, 0, count * 3);
     }
 }

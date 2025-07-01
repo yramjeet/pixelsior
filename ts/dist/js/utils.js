@@ -45,6 +45,10 @@ export function setCoordAttrib(gl, loc, size, normalise, stride, offset) {
     gl.vertexAttribPointer(loc, size, gl.UNSIGNED_SHORT, normalise, stride, offset);
     gl.enableVertexAttribArray(loc);
 }
+export function setClipSpaceAttrib(gl, loc, size, normalise, stride, offset) {
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, normalise, stride, offset);
+    gl.enableVertexAttribArray(loc);
+}
 export function hexToUint8(hex_str) {
     const hex = hex_str.split("#").pop();
     if (!hex) {
@@ -60,9 +64,14 @@ export function hexToUint8(hex_str) {
     }
     return arr;
 }
-export function hexToVec4(hex_str) {
+export function hexToVec(hex_str) {
     return (new Float32Array(hexToUint8(hex_str)))
         .map(v => v / 255);
+}
+export function uint8ToHex(arr) {
+    return arr.reduce((acc, v) => {
+        return acc + v.toString(16).padStart(2, "0");
+    }, "");
 }
 export function unit8ToVec4(arr) {
     return (new Float32Array(arr)).map(v => v / 255);
@@ -92,4 +101,52 @@ export function throttle(fn, ms_delay) {
             fn.apply(this, args);
         }
     };
+}
+export function rgb2hsv(r, g, b) {
+    const c_max = Math.max(r, g, b);
+    const c_min = Math.min(r, g, b);
+    const d = c_max - c_min;
+    let s, h = c_max;
+    if (d == 0) {
+        h = 0;
+    }
+    else if (c_max == r) {
+        h = ((g - b) / d) % 6;
+    }
+    else if (c_max == g) {
+        h = ((b - r) / d) + 2;
+    }
+    else if (c_max == b) {
+        h = ((r - g) / d) + 4;
+    }
+    h = h / 6;
+    if (h < 0) {
+        h = h + 1;
+    }
+    if (c_max == 0) {
+        s = 0;
+    }
+    else {
+        s = d / c_max;
+    }
+    return [h, s, c_max];
+}
+export function hsv2rgb(h, s, v) {
+    const c = v * s;
+    const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+    const m = v - c;
+    let rgb;
+    if (h < 1.0 / 6.0)
+        rgb = [c, x, 0.0];
+    else if (h < 2.0 / 6.0)
+        rgb = [x, c, 0.0];
+    else if (h < 3.0 / 6.0)
+        rgb = [0.0, c, x];
+    else if (h < 4.0 / 6.0)
+        rgb = [0.0, x, c];
+    else if (h < 5.0 / 6.0)
+        rgb = [x, 0.0, c];
+    else
+        rgb = [c, 0.0, x];
+    return rgb.map(val => (val + m) * 255);
 }
