@@ -23,10 +23,10 @@ html, body {
 	display: flex;
 	justify-content: space-around;
 	outline: none;
+	align-items: center;
 }
 
 #layers > canvas {
-	height: 100%;
 	position: absolute;
 	background: transparent;
 	outline: none;
@@ -67,3 +67,14 @@ html, body {
 	margin: 0 1rem;
 }
 
+@media (orientation: portrait){
+  #layers > canvas {
+    width: 100%;
+  }
+}
+
+@media (orientation: landscape){
+  #layers > canvas {
+    height: 100%;
+  }
+}

@@ -138,7 +138,7 @@ export class ColorPicker {
 
 		const preview_wrapper = document.createElement("div");
 		preview_wrapper.style.display = "flex";
-		preview_wrapper.style.justifyContent = "space-between";
+		preview_wrapper.style.gap = "1rem";
 		this.preview = document.createElement("div");
 		this.preview.style.background = this.color_hex;
 		this.preview.style.height = "4rem";
@@ -150,6 +150,7 @@ export class ColorPicker {
 		this.hex_input.style.fontSize = "1.5rem";
 		this.hex_input.style.fontFamily = "monospace";
 		this.hex_input.style.border = "none";
+		this.hex_input.style.width = "9rem";
 		this.hex_input.value = this.color_hex;
 		preview_wrapper.appendChild(this.preview);
 		preview_wrapper.appendChild(this.hex_input);
