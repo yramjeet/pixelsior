@@ -10,7 +10,8 @@ import {
 	uint8ToHex,
 	rgb2hsv,
 	hsv2rgb,
-	setFloatUniform
+	setFloatUniform,
+	setVec2Uniform
 } from "./utils.js";
 
 export class ColorPicker {
@@ -62,6 +63,11 @@ export class ColorPicker {
 				"name": "hue",
 				"value": this.hsva[0] || 0.0,
 				"setter": setFloatUniform
+			},
+			{
+				"name": "sv",
+				"value": new Float32Array([this.hsva[1], this.hsva[2]]),
+				"setter": setVec2Uniform
 			}
 		]);
 		this.sv_grad.setPixelBuffer(new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,]));
@@ -88,6 +94,11 @@ export class ColorPicker {
 				"name": "hue",
 				"value": this.hsva[0] || 0.0,
 				"setter": setFloatUniform
+			},
+			{
+				"name": "sv",
+				"value": new Float32Array([this.hsva[1], this.hsva[2]]),
+				"setter": setVec2Uniform
 			}
 		]);
 		this.sv_grad.clear();
@@ -119,9 +130,8 @@ export class ColorPicker {
 		this.sv_grad.canvas.addEventListener("click", (e) => {
 			this.hsva[1] = e.offsetX/this.sv_grad.canvas.clientWidth;
 			this.hsva[2] = 1 - e.offsetY/this.sv_grad.canvas.clientHeight;
-			console.log(this.hsva);
+			this.updateHue();
 			const [r, g, b] = hsv2rgb(this.hsva[0], this.hsva[1], this.hsva[2]);
-			console.log(r,g,b);
 			this.color_hex = "#" + uint8ToHex(new Uint8Array([r, g, b, this.hsva[3]*255]));
 			this.updatePreview();
 		});
@@ -152,6 +162,15 @@ export class ColorPicker {
 		this.hex_input.style.border = "none";
 		this.hex_input.style.width = "9rem";
 		this.hex_input.value = this.color_hex;
+		this.hex_input.addEventListener("input", (e) => {
+			const color = (e.target as HTMLInputElement).value;
+			if(color.length == 9){
+				this.color_hex = color;
+				const [r, g, b, a] = hexToVec(color);
+				this.hsva = [...rgb2hsv(r,g,b), a];
+				this.updateHue();
+			}
+		});
 		preview_wrapper.appendChild(this.preview);
 		preview_wrapper.appendChild(this.hex_input);
 		fragment.appendChild(preview_wrapper);

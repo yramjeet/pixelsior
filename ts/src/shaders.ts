@@ -130,6 +130,7 @@ export const HSV_FRAGMENT_SHADER = `#version 300 es
 	precision mediump float;
 	
 	uniform float hue;
+	uniform vec2 sv;
 	in vec2 v_uv;
 	out vec4 out_color;
 
@@ -153,6 +154,11 @@ export const HSV_FRAGMENT_SHADER = `#version 300 es
 	void main(){
 		float s = v_uv.x;
 		float v = v_uv.y;
-		vec3 rgb = hsv2rgb(hue, s, v);
-		out_color = vec4(rgb, 1.0);
+		if((s <= sv.x + 0.02) && (s >= sv.x - 0.02)
+		   && (v <= sv.y + 0.02) && (v >= sv.y - 0.02)){
+			out_color = vec4(0.0, 0.0, 0.0, 0.5);
+		} else {
+			vec3 rgb = hsv2rgb(hue, s, v);
+			out_color = vec4(rgb, 1.0);
+		}
 	}`;
